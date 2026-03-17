@@ -7,7 +7,6 @@ export default class MruCloseFocusPlugin extends Plugin {
 	private restoreTimer: number | null = null;
 
 	async onload() {
-		// Build an initial MRU seed from the current active leaf.
 		const active = this.app.workspace.getMostRecentLeaf();
 		if (active) {
 			this.lastActiveLeaf = active;
@@ -38,10 +37,8 @@ export default class MruCloseFocusPlugin extends Plugin {
 			this.rememberLeaf(newLeaf);
 		}
 
-		// Only relevant when focus changed away from a previously active leaf.
 		if (!previousLeaf || previousLeaf === newLeaf) return;
 
-		// Delay slightly so Obsidian can finish removing the closed leaf.
 		if (this.restoreTimer !== null) {
 			window.clearTimeout(this.restoreTimer);
 		}
@@ -49,7 +46,6 @@ export default class MruCloseFocusPlugin extends Plugin {
 		this.restoreTimer = window.setTimeout(() => {
 			this.restoreTimer = null;
 
-			// If the previously active leaf no longer exists, it was likely closed.
 			if (!this.leafExists(previousLeaf)) {
 				const fallback = this.findFallbackLeaf(previousLeaf, newLeaf);
 				if (!fallback) return;
@@ -60,7 +56,6 @@ export default class MruCloseFocusPlugin extends Plugin {
 					this.lastActiveLeaf = fallback;
 					this.rememberLeaf(fallback);
 				} finally {
-					// Release the guard on the next tick to avoid event recursion.
 					window.setTimeout(() => {
 						this.restoreInProgress = false;
 					}, 0);
@@ -75,7 +70,6 @@ export default class MruCloseFocusPlugin extends Plugin {
 		this.history = this.history.filter((item) => item !== leaf);
 		this.history.unshift(leaf);
 
-		// Keep it tiny and simple.
 		if (this.history.length > 50) {
 			this.history.length = 50;
 		}
@@ -107,12 +101,8 @@ export default class MruCloseFocusPlugin extends Plugin {
 	}
 
 	private isUsableLeaf(leaf: WorkspaceLeaf): boolean {
-		// Ignore leaves that are not part of normal navigation.
 		const view = leaf.view;
 		if (!view) return false;
-
-		// `navigation` is how Obsidian marks views meant for navigation.
-		// This helps avoid weird focus jumps to utility/sidebar leaves.
 		return view.navigation === true;
 	}
 }
