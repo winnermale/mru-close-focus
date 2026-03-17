@@ -1,0 +1,9 @@
+{
+  "id": "mru-close-focus",
+  "name": "MRU Close Focus",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "When the active tab is closed, re-focus the previously active tab by MRU history.",
+  "author": "OpenAI",
+  "isDesktopOnly": true
+}
