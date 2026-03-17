@@ -1,16 +1,16 @@
 import { Plugin, WorkspaceLeaf } from "obsidian";
 
-export default class MruCloseFocusPlugin extends Plugin {
+module.exports = class MruCloseFocusPlugin extends Plugin {
 	private history: WorkspaceLeaf[] = [];
-	private lastActiveLeaf: WorkspaceLeaf | null = null;
+	private activeLeaf: WorkspaceLeaf | null = null;
 	private restoreInProgress = false;
 	private restoreTimer: number | null = null;
 
 	async onload() {
 		const active = this.app.workspace.getMostRecentLeaf();
 		if (active && this.isUsableLeaf(active)) {
-			this.lastActiveLeaf = active;
-			this.pushToHistory(active);
+			this.activeLeaf = active;
+			this.touchHistory(active);
 		}
 
 		this.registerEvent(
@@ -30,18 +30,17 @@ export default class MruCloseFocusPlugin extends Plugin {
 	private onActiveLeafChange(newLeaf: WorkspaceLeaf | null) {
 		if (this.restoreInProgress) return;
 
-		const previousLeaf = this.lastActiveLeaf;
+		const previousLeaf = this.activeLeaf;
 
-		if (!previousLeaf && newLeaf && this.isUsableLeaf(newLeaf)) {
-			this.lastActiveLeaf = newLeaf;
-			this.pushToHistory(newLeaf);
+		if (!previousLeaf) {
+			this.activeLeaf = newLeaf;
+			if (newLeaf && this.isUsableLeaf(newLeaf)) {
+				this.touchHistory(newLeaf);
+			}
 			return;
 		}
 
-		if (!previousLeaf || previousLeaf === newLeaf) {
-			this.lastActiveLeaf = newLeaf;
-			return;
-		}
+		if (newLeaf === previousLeaf) return;
 
 		if (this.restoreTimer !== null) {
 			window.clearTimeout(this.restoreTimer);
@@ -53,16 +52,20 @@ export default class MruCloseFocusPlugin extends Plugin {
 			const previousWasClosed = !this.leafExists(previousLeaf);
 
 			if (previousWasClosed) {
-				const fallback = this.findPreviousSurvivingLeaf(previousLeaf, newLeaf);
+				const fallback = this.findMostRecentSurvivingLeaf(previousLeaf);
+
 				if (!fallback) {
-					this.lastActiveLeaf = newLeaf;
+					this.activeLeaf = newLeaf;
 					return;
 				}
 
 				this.restoreInProgress = true;
 				try {
-					this.app.workspace.setActiveLeaf(fallback, { focus: true });
-					this.lastActiveLeaf = fallback;
+					if (fallback !== newLeaf) {
+						this.app.workspace.setActiveLeaf(fallback, { focus: true });
+					}
+					this.activeLeaf = fallback;
+					this.touchHistory(fallback);
 				} finally {
 					window.setTimeout(() => {
 						this.restoreInProgress = false;
@@ -72,14 +75,16 @@ export default class MruCloseFocusPlugin extends Plugin {
 				return;
 			}
 
+			this.activeLeaf = newLeaf;
 			if (newLeaf && this.isUsableLeaf(newLeaf)) {
-				this.pushToHistory(newLeaf);
+				this.touchHistory(newLeaf);
 			}
-			this.lastActiveLeaf = newLeaf;
-		}, 30);
+		}, 20);
 	}
 
-	private pushToHistory(leaf: WorkspaceLeaf) {
+	private touchHistory(leaf: WorkspaceLeaf) {
+		if (!this.isUsableLeaf(leaf)) return;
+
 		this.history = this.history.filter((item) => item !== leaf);
 		this.history.unshift(leaf);
 
@@ -88,13 +93,9 @@ export default class MruCloseFocusPlugin extends Plugin {
 		}
 	}
 
-	private findPreviousSurvivingLeaf(
-		closedLeaf: WorkspaceLeaf,
-		currentLeaf: WorkspaceLeaf | null
-	): WorkspaceLeaf | null {
+	private findMostRecentSurvivingLeaf(closedLeaf: WorkspaceLeaf): WorkspaceLeaf | null {
 		for (const leaf of this.history) {
 			if (leaf === closedLeaf) continue;
-			if (leaf === currentLeaf) continue;
 			if (!this.leafExists(leaf)) continue;
 			if (!this.isUsableLeaf(leaf)) continue;
 			return leaf;
@@ -118,4 +119,4 @@ export default class MruCloseFocusPlugin extends Plugin {
 		if (!view) return false;
 		return view.navigation === true;
 	}
-}
+};
