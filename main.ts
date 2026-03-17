@@ -61,7 +61,7 @@ export default class MruCloseFocusPlugin extends Plugin {
 					}, 0);
 				}
 			}
-		}, 0);
+		}, 25);
 	}
 
 	private rememberLeaf(leaf: WorkspaceLeaf) {
@@ -70,8 +70,8 @@ export default class MruCloseFocusPlugin extends Plugin {
 		this.history = this.history.filter((item) => item !== leaf);
 		this.history.unshift(leaf);
 
-		if (this.history.length > 50) {
-			this.history.length = 50;
+		if (this.history.length > 100) {
+			this.history.length = 100;
 		}
 	}
 
@@ -79,15 +79,31 @@ export default class MruCloseFocusPlugin extends Plugin {
 		closedLeaf: WorkspaceLeaf,
 		currentLeaf: WorkspaceLeaf | null
 	): WorkspaceLeaf | null {
+		const closedType = this.getLeafType(closedLeaf);
+
 		for (const leaf of this.history) {
-			if (leaf === closedLeaf) continue;
-			if (leaf === currentLeaf) continue;
-			if (!this.leafExists(leaf)) continue;
-			if (!this.isUsableLeaf(leaf)) continue;
+			if (!this.isCandidateLeaf(leaf, closedLeaf, currentLeaf)) continue;
+			if (this.getLeafType(leaf) === closedType) return leaf;
+		}
+
+		for (const leaf of this.history) {
+			if (!this.isCandidateLeaf(leaf, closedLeaf, currentLeaf)) continue;
 			return leaf;
 		}
 
 		return null;
+	}
+
+	private isCandidateLeaf(
+		leaf: WorkspaceLeaf,
+		closedLeaf: WorkspaceLeaf,
+		currentLeaf: WorkspaceLeaf | null
+	): boolean {
+		if (leaf === closedLeaf) return false;
+		if (leaf === currentLeaf) return false;
+		if (!this.leafExists(leaf)) return false;
+		if (!this.isUsableLeaf(leaf)) return false;
+		return true;
 	}
 
 	private leafExists(target: WorkspaceLeaf): boolean {
@@ -104,5 +120,9 @@ export default class MruCloseFocusPlugin extends Plugin {
 		const view = leaf.view;
 		if (!view) return false;
 		return view.navigation === true;
+	}
+
+	private getLeafType(leaf: WorkspaceLeaf): string {
+		return leaf.view?.getViewType?.() ?? "";
 	}
 }

@@ -80,25 +80,34 @@ var MruCloseFocusPlugin = class extends import_obsidian.Plugin {
           }, 0);
         }
       }
-    }, 0);
+    }, 25);
   }
   rememberLeaf(leaf) {
     if (!this.isUsableLeaf(leaf)) return;
     this.history = this.history.filter((item) => item !== leaf);
     this.history.unshift(leaf);
-    if (this.history.length > 50) {
-      this.history.length = 50;
+    if (this.history.length > 100) {
+      this.history.length = 100;
     }
   }
   findFallbackLeaf(closedLeaf, currentLeaf) {
+    const closedType = this.getLeafType(closedLeaf);
     for (const leaf of this.history) {
-      if (leaf === closedLeaf) continue;
-      if (leaf === currentLeaf) continue;
-      if (!this.leafExists(leaf)) continue;
-      if (!this.isUsableLeaf(leaf)) continue;
+      if (!this.isCandidateLeaf(leaf, closedLeaf, currentLeaf)) continue;
+      if (this.getLeafType(leaf) === closedType) return leaf;
+    }
+    for (const leaf of this.history) {
+      if (!this.isCandidateLeaf(leaf, closedLeaf, currentLeaf)) continue;
       return leaf;
     }
     return null;
+  }
+  isCandidateLeaf(leaf, closedLeaf, currentLeaf) {
+    if (leaf === closedLeaf) return false;
+    if (leaf === currentLeaf) return false;
+    if (!this.leafExists(leaf)) return false;
+    if (!this.isUsableLeaf(leaf)) return false;
+    return true;
   }
   leafExists(target) {
     let exists = false;
@@ -111,5 +120,9 @@ var MruCloseFocusPlugin = class extends import_obsidian.Plugin {
     const view = leaf.view;
     if (!view) return false;
     return view.navigation === true;
+  }
+  getLeafType(leaf) {
+    var _a, _b, _c;
+    return (_c = (_b = (_a = leaf.view) == null ? void 0 : _a.getViewType) == null ? void 0 : _b.call(_a)) != null ? _c : "";
   }
 };
